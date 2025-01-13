@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { localDB } from '../lib/localStorage';
 import { 
   DollarSign, 
@@ -73,26 +73,14 @@ interface DashboardMetrics {
 }
 
 function Dashboard() {
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    totalSales: 0,
-    totalProducts: 0,
-    totalCustomers: 0,
-    totalRevenue: 0,
-    lowStockProducts: 0,
-    stockAlerts: [],
-    recentSales: [],
-    topProducts: [],
-    topCustomers: []
-  });
-
   const { session } = useAuth();
   const { hasPermission } = usePermissions(session?.roleId || '');
 
-  const calculateMetrics = () => {
+  const metrics: DashboardMetrics = useMemo(() => {
     const products = localDB.getAll('products') || [];
     const sales = localDB.getAll('sales') || [];
     const customers = localDB.getAll('customers') || [];
-
+    
     // Calculate stock alerts
     const stockAlerts = products
       .filter(product => product && product.current_stock <= product.min_stock_level)
@@ -140,8 +128,6 @@ function Dashboard() {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
 
-    const totalRevenue = sales.reduce((sum, sale) => sum + (sale?.total || 0), 0);
-
     // Calculate top customers
     const topCustomers = customers
       .filter(c => c.id !== 'walk-in')
@@ -154,22 +140,18 @@ function Dashboard() {
         total_purchases: c.total_purchases || 0
       }));
 
-    setMetrics({
+    return {
       totalSales: sales.length,
       totalProducts: products.length,
       totalCustomers: customers.length,
-      totalRevenue,
+      totalRevenue: sales.reduce((sum, sale) => sum + (sale?.total || 0), 0),
       lowStockProducts: stockAlerts.length,
       stockAlerts,
       recentSales,
       topProducts,
       topCustomers
-    });
-  };
-
-  useEffect(() => {
-    calculateMetrics();
-  }, []);
+    };
+  }, []); // Empty dependency array since we're reading from localStorage
 
   const handleEditClick = (product: { product: string }) => {
     window.location.href = `/products?edit=${product.product}`;
