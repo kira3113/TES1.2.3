@@ -1,0 +1,1 @@
+export type AdminSection = 'users' | 'backup' | 'logs' | 'settings'; 
